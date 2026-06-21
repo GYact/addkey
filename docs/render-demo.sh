@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SANDBOX="/tmp/addkey-demo"
+SANDBOX="/tmp/ak"
 
 command -v vhs >/dev/null 2>&1 || { echo "vhs not found (brew install vhs)"; exit 1; }
 

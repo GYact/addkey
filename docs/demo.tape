@@ -14,25 +14,27 @@ Output docs/demo.gif
 Set Shell "bash"
 Set FontSize 22
 Set Width 1100
-Set Height 600
+Set Height 640
 Set Padding 24
 Set Theme "Catppuccin Mocha"
 
 # Enter the prepared sandbox without showing it (env is exported by render-demo.sh).
 Hide
-Type "cd /tmp/addkey-demo/work && clear" Enter
+Type "cd /tmp/ak/work && clear" Enter
 Show
 
-Sleep 500ms
-Type "# Hand an API key to your AI assistant - without pasting it in chat" Sleep 1.2s Enter
-Sleep 500ms
+Sleep 600ms
+Type "# The risk isn't storing a key - it's typing it where it gets logged." Sleep 1.4s Enter
+Sleep 600ms
+Type "# addkey reads it via a hidden dialog - never shown on screen." Sleep 1.4s Enter
+Sleep 400ms
 Type "addkey OPENAI_API_KEY" Sleep 900ms Enter
 Sleep 1.8s
 
-Type "# .env holds the plaintext your app reads" Sleep 800ms Enter
+Type "# .env holds the plaintext your app/agent reads:" Sleep 900ms Enter
 Type "cat .env" Sleep 500ms Enter
 Sleep 1.6s
 
-Type "# .env.enc is encrypted & commit-safe (keys readable, values not)" Sleep 800ms Enter
+Type "# .env.enc is encrypted & commit-safe (values encrypted):" Sleep 900ms Enter
 Type "cat .env.enc | grep OPENAI_API_KEY" Sleep 500ms Enter
-Sleep 2.6s
+Sleep 3s
