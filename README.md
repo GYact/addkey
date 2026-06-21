@@ -4,6 +4,8 @@
 
 **English** | [日本語](./README.ja.md)
 
+![addkey demo](./docs/demo.gif)
+
 `addkey` pops up a hidden-input dialog, takes your secret, and writes it straight
 into `.env` (plus an encrypted, commit-safe `.env.enc`). The value never touches
 stdout, your shell history, or your AI assistant's conversation log.
