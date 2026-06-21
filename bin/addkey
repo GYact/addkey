@@ -72,6 +72,9 @@ upsert_dotenv() {
   touch "$file"; chmod 600 "$file"
   tmp=$(mktemp "${TMPDIR:-/tmp}/addkey.XXXXXX")
   chmod 600 "$tmp"
+  # The temp file briefly holds the plaintext value; remove it on any exit so an
+  # interrupt between mktemp and mv never leaves a secret behind in TMPDIR.
+  trap 'rm -f "$tmp"' EXIT INT TERM
   if grep -qE "^${name}=" "$file" 2>/dev/null; then
     grep -vE "^${name}=" "$file" > "$tmp" || true
     ACTION="updated"
@@ -81,6 +84,7 @@ upsert_dotenv() {
   fi
   printf '%s=%s\n' "$name" "$value" >> "$tmp"
   mv "$tmp" "$file"
+  trap - EXIT INT TERM
 }
 
 main() {

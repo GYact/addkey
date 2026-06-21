@@ -24,7 +24,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y age
           SOPS_VERSION=v3.13.1
+          SOPS_SHA256=620a9d7e3352ababeca6908cea24a6e8b14ce89a448ddbd3f94f1ef3398f470a
           curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          echo "${SOPS_SHA256}  /tmp/sops" | sha256sum -c -
           sudo install -m 0755 /tmp/sops /usr/local/bin/sops
       - name: End-to-end smoke test
         env:
