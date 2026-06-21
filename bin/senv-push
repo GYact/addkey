@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# senv-push - re-encrypt a plaintext dotenv into its .enc after you edit it.
+#   Run this whenever you change the plaintext .env so the committed .enc stays
+#   in sync. (Inverse of senv-pull.)
+#
+# Usage: senv-push [file]    (default: .env)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+senv_require sops
+
+SRC="${1:-.env}"
+[ -f "$SRC" ] || senv_die "$SRC not found"
+RECIPIENT="$(senv_resolve_recipient)"
+
+sops --encrypt --age "$RECIPIENT" --input-type dotenv --output-type dotenv "$SRC" > "$SRC.enc"
+senv_info "synced: $SRC -> $SRC.enc"

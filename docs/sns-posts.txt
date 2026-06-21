@@ -1,0 +1,105 @@
+==============================================================================
+ SNS 発信用ポスト原稿  (X 日本語 / X 英語)  + デモGIFの撮り方
+==============================================================================
+投稿前に: リポジトリURL(https://github.com/GYact/addkey)とハンドルを確認。
+1投稿目に画像/GIFを必ず添付すると伸びやすいです。
+
+
+------------------------------------------------------------------------------
+■ X (日本語) — ローンチ単発ポスト
+------------------------------------------------------------------------------
+AIにコード書かせるとき、APIキーをチャットに貼ってませんか？🫢
+
+一度貼ると履歴やログに残ります。そこで `addkey` を作りました。
+
+$ addkey OPENAI_API_KEY
+→ 入力非表示のダイアログが出る
+→ 値はターミナルにもAIの会話ログにも残らず .env に保存
+
+OSS / Apache-2.0 🔐
+https://github.com/GYact/addkey
+
+#AI #Claude Code #セキュリティ
+
+
+------------------------------------------------------------------------------
+■ X (日本語) — スレッド版 (伸ばしたい場合)
+------------------------------------------------------------------------------
+1/ バイブコーディングの地味な事故:
+「このAPI叩いて、キーはこれ → sk-...」
+…と、つい本物のキーをチャットに貼ってしまう。一度入ると取り消せません。
+
+2/ 「気をつける」では再発する。
+なので "貼る導線そのもの" をなくすCLIを作りました → addkey
+
+addkey OPENAI_API_KEY と打つと入力非表示のダイアログが出て、
+値はどこにもエコーされず .env に直接保存されます。
+
+3/ さらに SOPS + age 連携で
+「git上は暗号化・ディスク上は平文」モデル。
+アプリやエージェントは普通の .env をそのまま読めるのに、
+コミットする正本は暗号化版 .env.enc。
+
+4/ 公開鍵はハードコードせず各自の鍵を自動利用。
+新マシン復旧は senv-pull、確認は senv-cat、編集は senv-edit。
+
+OSS / Apache-2.0 です。Star・Issue 歓迎🙏
+https://github.com/GYact/addkey
+
+
+------------------------------------------------------------------------------
+■ X (English) — launch post
+------------------------------------------------------------------------------
+Pasting API keys into your AI assistant's chat? 🫢
+Once it's in the conversation, it can be logged & synced.
+
+So I built `addkey`:
+
+$ addkey OPENAI_API_KEY
+→ hidden-input dialog pops up
+→ the value never hits your terminal, history, or the AI chat log
+→ saved straight to .env (+ encrypted .env.enc)
+
+OSS, Apache-2.0 🔐
+https://github.com/GYact/addkey
+
+#AI #ClaudeCode #DevTools #infosec
+
+
+------------------------------------------------------------------------------
+■ X (English) — thread version
+------------------------------------------------------------------------------
+1/ The quiet vibe-coding mistake:
+"call this API, here's the key -> sk-..."
+You just leaked a secret into a chat log you don't control. You can't un-send it.
+
+2/ "Be careful" doesn't scale. Remove the temptation instead.
+addkey OPENAI_API_KEY -> hidden dialog -> value saved to .env, never echoed.
+
+3/ Pairs with SOPS + age: "encrypted in git, plaintext on disk".
+Your app/agent reads a normal .env; the committed source of truth is .env.enc.
+
+4/ No hardcoded public key — it uses your own age key. Apache-2.0, PRs welcome.
+https://github.com/GYact/addkey
+
+
+==============================================================================
+ デモGIFの撮り方 (15秒・伸びる素材の作り方)
+==============================================================================
+ターミナルを大きめのフォントにして、以下を1テイクで:
+
+  1. プロンプトに `addkey OPENAI_API_KEY` と打つ (まだEnter押さない)
+  2. Enter → GUIダイアログが出る様子を見せる
+  3. ダイアログにダミーキー (sk-demo-xxxx) を入力 → 保存
+  4. `cat .env` で行が増えたのを見せる (※本番キーでは絶対やらない)
+  5. `cat .env.enc | head` で暗号化されている様子を見せる
+
+撮影ツール候補:
+  - macOS 標準: 画面収録(Cmd+Shift+5) → gif変換
+  - asciinema + agg で軽量gif化 (ターミナルが綺麗)
+  - QuickTime → Gifski で高品質gif
+
+ポイント:
+  - ダミーキーを使う。実キーは画面に出さない。
+  - 最初の1.5秒で「キーをチャットに貼らない」のテキストを被せると離脱が減る。
+  - 字幕(日/英)を焼き込むと海外にも届く。

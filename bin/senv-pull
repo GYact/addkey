@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# senv-pull - decrypt a committed .enc back into its plaintext dotenv.
+#   Use this on a new machine, or to recover the plaintext from git.
+#   Requires your age private key at $SOPS_AGE_KEY_FILE.
+#
+# Usage: senv-pull [file]    (default: .env  -> decrypts .env.enc)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+senv_require sops
+
+DST="${1:-.env}"
+ENC="$DST.enc"
+[ -f "$ENC" ] || senv_die "$ENC not found"
+[ -s "$SOPS_AGE_KEY_FILE" ] || senv_die "private key not found: $SOPS_AGE_KEY_FILE (run 'addkey init' or restore it)"
+
+if [ -f "$DST" ]; then
+  cp -p "$DST" "$DST.bak.$$" && senv_warn "existing $DST backed up to $DST.bak.$$"
+fi
+umask 077
+sops --decrypt --input-type dotenv --output-type dotenv "$ENC" > "$DST"
+chmod 600 "$DST"
+senv_info "restored: $ENC -> $DST"

@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# addkey - enter an API key/secret via a GUI/hidden prompt and store it safely.
+#   The secret VALUE is never printed to stdout/stderr, so it never lands in
+#   your shell history or in an AI coding assistant's conversation log.
+#
+# Usage:
+#   addkey init                 Set up your age key + recipient (run once).
+#   addkey OPENAI_API_KEY       Store into ./.env (and sync ./.env.enc if sops is present).
+#   addkey -k <service>         Store into the OS keychain instead (macOS only).
+#   addkey -f <file> NAME       Store into a specific dotenv file (default: .env).
+#
+# Non-interactive (CI/tests): set ADDKEY_VALUE to skip the prompt.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+
+usage() {
+  sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+# --- addkey init -------------------------------------------------------------
+do_init() {
+  senv_require age age-keygen
+  mkdir -p "$(dirname "$SOPS_AGE_KEY_FILE")" "$SENV_CONFIG_DIR"
+  chmod 700 "$(dirname "$SOPS_AGE_KEY_FILE")" "$SENV_CONFIG_DIR" 2>/dev/null || true
+  if [ ! -s "$SOPS_AGE_KEY_FILE" ]; then
+    ( umask 077; age-keygen -o "$SOPS_AGE_KEY_FILE" >/dev/null 2>&1 )
+    chmod 600 "$SOPS_AGE_KEY_FILE"
+    senv_info "Generated a new age key: $SOPS_AGE_KEY_FILE"
+  else
+    senv_info "Using existing age key: $SOPS_AGE_KEY_FILE"
+  fi
+  local pub
+  pub=$(age-keygen -y "$SOPS_AGE_KEY_FILE" | sed -n '1p')
+  printf '%s\n' "$pub" > "$SENV_RECIPIENT_FILE"
+  chmod 600 "$SENV_RECIPIENT_FILE"
+  senv_info "Recipient saved to: $SENV_RECIPIENT_FILE"
+  senv_info "Your age recipient (public key, safe to share):"
+  senv_info "  $pub"
+  senv_info "NEVER commit or share the private key file ($SOPS_AGE_KEY_FILE)."
+}
+
+# --- secret prompt (no echo) -------------------------------------------------
+# Reads the secret into the caller's variable $1. Never echoes the value.
+read_secret() {
+  local _name="$1" _out
+  if [ -n "${ADDKEY_VALUE:-}" ]; then
+    printf -v "$_name" '%s' "$ADDKEY_VALUE"; return 0
+  fi
+  if [ "$(uname -s)" = "Darwin" ] && command -v osascript >/dev/null 2>&1; then
+    _out=$(osascript <<OSA 2>/dev/null
+set v to text returned of (display dialog "Enter the value for: ${SECRET_LABEL}" default answer "" with hidden answer with title "addkey" buttons {"Cancel","Save"} default button "Save")
+return v
+OSA
+    ) || senv_die "cancelled"
+  elif command -v zenity >/dev/null 2>&1; then
+    _out=$(zenity --password --title="addkey: ${SECRET_LABEL}" 2>/dev/null) || senv_die "cancelled"
+  else
+    # Terminal fallback: silent read, prompt goes to stderr (not captured).
+    printf 'Enter value for %s (input hidden): ' "$SECRET_LABEL" >&2
+    read -rs _out </dev/tty; printf '\n' >&2
+  fi
+  printf -v "$_name" '%s' "$_out"
+}
+
+# --- dotenv upsert (value only ever written to the file) ---------------------
+upsert_dotenv() {
+  local file="$1" name="$2" value="$3" tmp
+  touch "$file"; chmod 600 "$file"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/addkey.XXXXXX")
+  chmod 600 "$tmp"
+  if grep -qE "^${name}=" "$file" 2>/dev/null; then
+    grep -vE "^${name}=" "$file" > "$tmp" || true
+    ACTION="updated"
+  else
+    cat "$file" > "$tmp"
+    ACTION="added"
+  fi
+  printf '%s=%s\n' "$name" "$value" >> "$tmp"
+  mv "$tmp" "$file"
+}
+
+main() {
+  local mode="env" envfile=".env" name=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      init) do_init; exit 0 ;;
+      -h|--help) usage 0 ;;
+      -k|--keychain) mode="keychain"; shift ;;
+      -f|--file) envfile="${2:?-f requires a path}"; shift 2 ;;
+      --) shift; break ;;
+      -*) senv_die "unknown option: $1" ;;
+      *) name="$1"; shift; break ;;
+    esac
+  done
+  [ -n "$name" ] || usage 1
+  case "$name" in *[!A-Za-z0-9_]*) senv_die "invalid key name (use A-Z 0-9 _): $name";; esac
+
+  SECRET_LABEL="$name"
+  local SECRET=""
+  read_secret SECRET
+  [ -n "$SECRET" ] || senv_die "empty value, aborted"
+
+  if [ "$mode" = "keychain" ]; then
+    [ "$(uname -s)" = "Darwin" ] || senv_die "keychain mode is macOS-only"
+    security add-generic-password -U -a "$USER" -s "$name" -w "$SECRET" >/dev/null 2>&1
+    SECRET=""; unset SECRET
+    senv_info "Saved '$name' to the macOS keychain (value hidden)."
+    exit 0
+  fi
+
+  upsert_dotenv "$envfile" "$name" "$SECRET"
+  SECRET=""; unset SECRET
+
+  local sync=""
+  if command -v sops >/dev/null 2>&1; then
+    local recipient
+    recipient=$(senv_resolve_recipient)
+    if sops -e --age "$recipient" --input-type dotenv --output-type dotenv "$envfile" > "$envfile.enc" 2>/dev/null; then
+      sync=" (.enc synced)"
+    else
+      senv_warn "could not sync $envfile.enc"
+    fi
+  fi
+  senv_info "$(pwd)/$envfile: '$name' $ACTION$sync (value hidden)."
+}
+
+main "$@"

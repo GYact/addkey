@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# senv-edit - edit an encrypted .enc dotenv with your $EDITOR.
+#   Decrypts to a private temp file, opens $EDITOR, then re-encrypts. The
+#   matching plaintext dotenv (if present) is refreshed so disk and .enc agree.
+#   The temp plaintext is shredded on exit.
+#
+# Usage: senv-edit <file>.enc    (e.g. senv-edit .env.enc)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+senv_require sops
+
+ENC="${1:?usage: senv-edit <file>.enc}"
+case "$ENC" in *.enc) ;; *) senv_die "expected a .enc file, got: $ENC";; esac
+[ -f "$ENC" ] || senv_die "$ENC not found"
+[ -s "$SOPS_AGE_KEY_FILE" ] || senv_die "private key not found: $SOPS_AGE_KEY_FILE"
+RECIPIENT="$(senv_resolve_recipient)"
+
+umask 077
+TMP=$(mktemp "${TMPDIR:-/tmp}/senv-edit.XXXXXX")
+cleanup() { rm -f "$TMP"; }
+trap cleanup EXIT INT TERM
+
+sops --decrypt --input-type dotenv --output-type dotenv "$ENC" > "$TMP"
+"${EDITOR:-vi}" "$TMP"
+sops --encrypt --age "$RECIPIENT" --input-type dotenv --output-type dotenv "$TMP" > "$ENC"
+senv_info "re-encrypted: $ENC"
+
+PLAIN="${ENC%.enc}"
+if [ -f "$PLAIN" ]; then
+  cp "$TMP" "$PLAIN"; chmod 600 "$PLAIN"
+  senv_info "re-synced plaintext: $PLAIN"
+fi

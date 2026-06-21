@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint scripts
+        run: shellcheck -x bin/* lib/*.sh install.sh
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install sops + age
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y age
+          SOPS_VERSION=v3.13.1
+          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+      - name: End-to-end smoke test
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/config
+          SOPS_AGE_KEY_FILE: ${{ runner.temp }}/keys.txt
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/bin:$PATH"
+          cd "$(mktemp -d)"
+          addkey init
+          ADDKEY_VALUE="sk-test-123" addkey OPENAI_API_KEY
+          grep -q '^OPENAI_API_KEY=sk-test-123$' .env
+          grep -q 'OPENAI_API_KEY=ENC\[' .env.enc
+          rm .env
+          senv-pull .env
+          grep -q '^OPENAI_API_KEY=sk-test-123$' .env
+          senv-cat .env.enc | grep -q '^OPENAI_API_KEY=sk-test-123$'
+          echo "smoke OK"

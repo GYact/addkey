@@ -1,0 +1,14 @@
+# Never commit plaintext secrets. Commit only the encrypted *.enc copies.
+.env
+.env.*
+!.env.*.enc
+!.env.enc
+!.env.example
+*.bak.*
+
+# age private keys must never be committed
+keys.txt
+*.agekey
+
+# OS noise
+.DS_Store

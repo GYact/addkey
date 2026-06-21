@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# senv-cat - decrypt and print an encrypted .enc dotenv to stdout.
+#   Intended for quick inspection. Remember: this DOES print secret values,
+#   so do not run it where the output is logged or captured.
+#
+# Usage: senv-cat <file>.enc    (e.g. senv-cat .env.enc)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+senv_require sops
+
+ENC="${1:?usage: senv-cat <file>.enc}"
+case "$ENC" in *.enc) ;; *) senv_die "expected a .enc file, got: $ENC";; esac
+[ -f "$ENC" ] || senv_die "$ENC not found"
+[ -s "$SOPS_AGE_KEY_FILE" ] || senv_die "private key not found: $SOPS_AGE_KEY_FILE"
+
+sops --decrypt --input-type dotenv --output-type dotenv "$ENC"

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# sopsify - migrate a plaintext dotenv file to the "encrypted-in-git,
+#           plaintext-on-disk" model.
+#   - The plaintext <file> stays on disk so your app / AI agent keeps working.
+#   - <file>.enc is the SOPS-encrypted copy you commit (source of truth).
+#   - Add the plaintext name to .gitignore yourself; this only untracks it.
+#
+# Usage: sopsify [file]    (default: .env)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/senv-common.sh
+. "$SCRIPT_DIR/../lib/senv-common.sh"
+senv_require sops
+
+SRC="${1:-.env}"
+[ -f "$SRC" ] || senv_die "$SRC not found"
+ENC="$SRC.enc"
+RECIPIENT="$(senv_resolve_recipient)"
+
+# Encrypt values only; keys stay readable so diffs are reviewable.
+sops --encrypt --age "$RECIPIENT" --input-type dotenv --output-type dotenv "$SRC" > "$ENC"
+senv_git_untrack "$SRC"
+senv_info "$SRC -> $ENC (commit the .enc file)"
