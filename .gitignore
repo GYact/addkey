@@ -12,3 +12,7 @@ keys.txt
 
 # OS noise
 .DS_Store
+
+# Local-only promo drafts (kept out of the public repo)
+docs/sns-posts.txt
+docs/zenn-article-draft.txt
